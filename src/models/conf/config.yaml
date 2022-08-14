@@ -1,0 +1,11 @@
+max_epochs: 100
+lr: 1e-4
+optimizer: adam
+alpha: 0.1  # correlation memory
+x_dim: [28, 28]
+y_dim: [28, 28]
+
+lambda_x: 1
+lambda_y: 1
+sigma_x: 1
+sigma_y: 1
