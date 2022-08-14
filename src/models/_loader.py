@@ -1,15 +1,11 @@
 import os
 
-import torch
+# import torch
 import wget
 import numpy as np
 import zipfile
 import pytorch_lightning as pl
-from torch.utils.data import random_split, DataLoader, Dataset
-
-# Note - you must have torchvision installed for this example
-from torchvision.datasets import MNIST
-from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 
 
 class MNISTDataModule(pl.LightningDataModule):
@@ -18,7 +14,6 @@ class MNISTDataModule(pl.LightningDataModule):
         self.data_dir = data_dir
         self.mnist_train = None
         self.mnist_test = None
-        # self.prepare_data()
 
     def prepare_data(self):
         path_1 = os.path.join(self.data_dir, "mnist_background_images.zip")
@@ -71,7 +66,7 @@ class CustomDataset(Dataset):
                 train = np.loadtxt(f)
             with z.open('mnist_background_images_test.amat') as f:
                 test = np.loadtxt(f)
-        X = np.concatenate((train[:, 0:784], test[:, 0:784]), axis=0)
+        X = np.concatenate((train[:, 0:784], test[:, 0:784]), axis=0, dtype=np.float)
         # loading all the data from the zip folders:
         with zipfile.ZipFile(self.data_dir_2) as z:
             with z.open('mnist_background_random_train.amat') as f:

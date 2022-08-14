@@ -11,7 +11,7 @@ class Net(pl.LightningModule):
 
         self.net = DCCA(net_hp)
 
-        self.C_t_1 = None
+        self.C_t_1 = 0
         self.N_factor = 0
 
     def metric(self, X_hat, Y_hat):
@@ -58,7 +58,7 @@ class Net(pl.LightningModule):
         return self.effective_calc(torch.trace(M) / M.shape[0])
 
     def effective_calc(self, C_mini):
-        if self.C_t_1 is None:
+        if self.C_t_1 == 0:
             self.C_t_1 = torch.zeros_like(C_mini)
         C_t = self.net_hp.alpha * self.C_t_1 + C_mini
 
@@ -89,7 +89,6 @@ class Net(pl.LightningModule):
         :param arg: the power
         :return: A^(arg)
         """
-        #  out = torch.linalg.matrix_power(A, arg)
         eig_values, eig_vectors = torch.linalg.eig(A)
         eig_values = eig_values.real
         eig_vectors = eig_vectors.real

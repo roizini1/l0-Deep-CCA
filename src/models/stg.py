@@ -43,10 +43,7 @@ class StochasticGates(nn.Module):
     def Bernoulli_relaxation(self):
         """ Gaussian-based relaxation for the Bernoulli random variables """
         """ zi = max(0, min(1, µi + eps_i)) -> hard sigmoid function """
-
         self.eps = self.eps_init()
-        # print(self.mus.get_device())
-        # print(self.eps.get_device())
         return torch.clamp(self.mus+self.eps, 0.0, 1.0)
 
     def get_regularization(self):

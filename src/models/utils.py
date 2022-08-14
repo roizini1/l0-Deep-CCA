@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -13,14 +14,15 @@ class XNet(nn.Module):
             nn.MaxPool2d(2, 2),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(8*25*20, 256),
+            nn.Linear(200, 256),
             nn.Tanh(),
             nn.Linear(256, 64),
             nn.Tanh()
         )
 
     def forward(self, x):
-        return self.net(x)
+        x = torch.tensor(x, dtype=torch.float32, device=x.get_device())
+        return self.net(torch.unsqueeze(x, dim=1))
 
 '''
 class YNet(nn.Module):
