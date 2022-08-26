@@ -1,12 +1,11 @@
 from omegaconf import OmegaConf
 import logging
 import torch
-# import os
 
 # pytorch lightning imports:
-from pytorch_lightning import Trainer  # , seed_everything
+from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import RichProgressBar, ModelCheckpoint, EarlyStopping  # , ModelSummary
+from pytorch_lightning.callbacks import RichProgressBar, ModelCheckpoint, EarlyStopping
 from pytorch_lightning.strategies import DDPStrategy
 
 # hydra imports:
@@ -34,65 +33,60 @@ def main(cfg: Config_class):
     model = Net(cfg)
 
     checkpoint_callback = ModelCheckpoint(
-        # dirpath=checkpoint_dir,
-        filename='checkpoint_{epoch:02d}-{val_loss:.2f}',
+        filename='checkpoint_{epoch:02d}-{loss:.2f}',
         monitor='loss',
         verbose=True,
         save_last=True,
         save_top_k=1,
-        mode='max',
+        mode='min',
     )
 
     stop_callback = EarlyStopping(
         monitor='loss',
         patience=30,
-        mode='max',  # for this loss mode is max
+        mode='min',  # for this loss mode is max
         )
 
-    callback_list = [checkpoint_callback, RichProgressBar(), stop_callback, ]  # ModelSummary(max_depth=-1)]
+    callback_list = [checkpoint_callback, RichProgressBar(), stop_callback, ]
 
     tb_logger = TensorBoardLogger(save_dir="/home/dsi/ziniroi/project_usl/src/")
+
     my_strategy = DDPStrategy(find_unused_parameters=False, static_graph=True)
 
     trainer = Trainer(
-        # deterministic=True,
         accelerator="gpu",
-
-        devices=[0, 1],
+        devices=[0, 1, 2, 3],
         max_epochs=cfg.max_epochs,
         enable_checkpointing=True,
-        #  enable_model_summary=True,
         callbacks=callback_list,
         logger=tb_logger,
         strategy=my_strategy,
-        # strategy="ddp",
         sync_batchnorm=True,
-
-        # auto_scale_batch_size="binsearch",
+        detect_anomaly=True,
     )
-
     '''
+    
     # single gpu
     trainer = Trainer(
         # deterministic=True,
         accelerator="gpu",
 
         devices=[1],
-        max_epochs=1000,
+        max_epochs=cfg.max_epochs,
         enable_checkpointing=True,
         #  enable_model_summary=True,
         callbacks=callback_list,
         logger=tb_logger,
+        detect_anomaly=True,
         # strategy=my_strategy,
         # strategy="ddp",
         # sync_batchnorm=True,
-        auto_lr_find=True,
+        # auto_lr_find=True,
         # auto_scale_batch_size="binsearch",
     )
     '''
     dm = MNISTDataModule()
     dm.setup(stage="fit")
-    # trainer.tune(model, datamodule=dm)
     trainer.fit(model, datamodule=dm)
 
 

@@ -6,25 +6,50 @@ from dcca_net_pytorch import DCCA
 class Net(pl.LightningModule):
     def __init__(self, net_hp):
         super().__init__()
-        self.save_hyperparameters(net_hp)
+        self.automatic_optimization = False
         self.net_hp = net_hp
+        self.save_hyperparameters(net_hp)
 
+        # pytorch net object:
         self.net = DCCA(net_hp)
 
-        self.C_t_1 = 0
+        self.C_t_1 = None
         self.N_factor = 0
 
     def metric(self, X_hat, Y_hat):
-        return -self._get_corr(X_hat, Y_hat) + self.net.f.get_regularization() + self.net.g.get_regularization()
+        corr = self.correlation_sdl(X_hat, Y_hat)
+        loss = -corr
+        return loss
+
+    def correlation_sdl(self, X, Y):
+        psi_x = X - X.mean(axis=0)
+        psi_y = Y - Y.mean(axis=0)
+        self.N_factor = self.net_hp.alpha * self.N_factor + 1
+
+        N = psi_x.size(dim=0)
+        C_mini = (torch.flatten(psi_y, start_dim=1).T @ torch.flatten(psi_x, start_dim=1)).T / (N - 1)
+
+        if self.C_t_1 is None:
+            self.C_t_1 = torch.zeros_like(C_mini)
+        self.C_t_1 = (self.net_hp.alpha * self.C_t_1 + C_mini) / self.N_factor
+        diag = torch.diag(self.C_t_1)
+        corr_sdl = torch.sum(self.C_t_1) - torch.sum(diag)
+        return corr_sdl
 
     def forward(self, batch):
-        X, Y = batch
+        X, Y = batch  # C:\Users\roizi\PycharmProjects\l0-Deep-CCA\src
         return self.net(X, Y)
 
     def training_step(self, batch):
-        X_hat, Y_hat = self.forward(batch)
+        # opt = self.optimizers()
+        # opt.zero_grad()
+        # pass throw forward:
+        X_hat, Y_hat = self(batch)
         loss = self.metric(X_hat, Y_hat)
+        # self.manual_backward(loss, retain_graph=True)
+        # opt.step()
 
+        # tensorboard logs:
         tensorboard_logs = {'train_loss': loss}
         self.log("loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         return {'loss': loss, 'log': tensorboard_logs}
@@ -36,6 +61,7 @@ class Net(pl.LightningModule):
             optimizer = torch.optim.SGD(self.parameters(), lr=self.net_hp.lr)
         return {'optimizer': optimizer}
 
+    '''
     def _get_corr(self, X, Y):
         """
         computes the correlation between X,Y
@@ -56,7 +82,7 @@ class Net(pl.LightningModule):
         M = torch.linalg.multi_dot([C_yy_inv_root, C_yx, C_xx_inv, C_xy, C_yy_inv_root])
 
         return self.effective_calc(torch.trace(M) / M.shape[0])
-
+    
     def effective_calc(self, C_mini):
         if self.C_t_1 == 0:
             self.C_t_1 = torch.zeros_like(C_mini)
@@ -83,7 +109,7 @@ class Net(pl.LightningModule):
     @staticmethod
     def _mat_to_the_power(A, arg):
         """
-        raises matrix to the arg-th power using diagonalization, where arg is signed float.
+        raises matrix to the arg-th power using diagonalizing, where arg is signed float.
         if arg is integer, it's better to use 'torch.linalg.matrix_power()'
         :param A: symmetric matrix (must be PSD if taking even roots)
         :param arg: the power
@@ -93,3 +119,4 @@ class Net(pl.LightningModule):
         eig_values = eig_values.real
         eig_vectors = eig_vectors.real
         return torch.linalg.multi_dot([eig_vectors, torch.diag((eig_values + 1e-3) ** arg), torch.inverse(eig_vectors)])
+    '''

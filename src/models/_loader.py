@@ -1,5 +1,4 @@
 import os
-
 # import torch
 import wget
 import numpy as np
@@ -42,7 +41,7 @@ class MNISTDataModule(pl.LightningDataModule):
         '''
 
     def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=32, num_workers=40)
+        return DataLoader(self.mnist_train, batch_size=200, num_workers=40, pin_memory=True)
     '''
     def test_dataloader(self):
         return DataLoader(self.mnist_test, batch_size=32)
@@ -67,6 +66,7 @@ class CustomDataset(Dataset):
             with z.open('mnist_background_images_test.amat') as f:
                 test = np.loadtxt(f)
         X = np.concatenate((train[:, 0:784], test[:, 0:784]), axis=0, dtype=np.float)
+
         # loading all the data from the zip folders:
         with zipfile.ZipFile(self.data_dir_2) as z:
             with z.open('mnist_background_random_train.amat') as f:
@@ -75,13 +75,11 @@ class CustomDataset(Dataset):
                 test = np.loadtxt(f)
 
         Y = np.concatenate((train[:, 0:784], test[:, 0:784]), axis=0)
-        # labels = np.concatenate((train[:, 784], test[:, 784]), axis=0)
-        '''
-        print('original data shape is -> ' + str(X.shape))
-        print('original data labels shape is -> ' + str(labels.shape))
-        '''
+
         self.len = min(X.shape[0], Y.shape[0])
-        return X[:self.len, :], Y[:self.len, :]  # torch.from_numpy(X[:self.len, :].reshape([self.len, 28, 28])),
+        X_input = X[:self.len, :]
+        Y_input = Y[:self.len, :]
+        return X_input, Y_input  # torch.from_numpy(X[:self.len, :].reshape([self.len, 28, 28])),
         # torch.from_numpy(Y[:self.len, :].reshape([self.len, 28, 28]))
 
     def __len__(self):
@@ -89,4 +87,5 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         X, Y = self.data
-        return X[idx, :].reshape([28, 28]), Y[idx, :].reshape([28, 28])  # X[idx, :, :], Y[idx, :, :]
+        X_input, Y_input = X[idx, :].reshape([28, 28]), Y[idx, :].reshape([28, 28])
+        return X_input, Y_input
