@@ -32,11 +32,11 @@ class SparseDeepCCA(nn.Module):
         :return: loss function
         """
         X_hat, Y_hat = self.f(X), self.g(Y)
-        return - self.get_sdl(X_hat, Y_hat) + self.f[0].get_reg() + self.g[0].get_reg()
+        return - self.get_sdl(X_hat, Y_hat)  # + self.f[0].get_reg() + self.g[0].get_reg()
 
     def get_sdl(self, X, Y):
         # input->[batch size, flatten image shape]
-        C_mini = self._cov(X, Y)  # mini batch correlation
+        C_mini = self._cov(X, Y) - self.f[0].get_reg() - self.g[0].get_reg() # mini batch correlation
         if self.last_C_accu is None:
             self.last_C_accu = torch.zeros_like(C_mini)
 
@@ -85,27 +85,7 @@ class SparseDeepCCA(nn.Module):
         :return: sequential model in which there are gaets before the non-linearity
         """
         return nn.Sequential(StochasticGates(in_features, sigma, lam), net)
-    '''
-    def _get_corr(self, X, Y):
-        """
-        computes the correlation between X,Y
-        :param X: 1st variable, N (samples) x d (features)
-        :param Y: 2nd variable, N (samples) x d (features)
-        :return: rho(X,Y)
-        """
-        psi_x = X - X.mean(axis=0)
-        psi_y = Y - Y.mean(axis=0)
 
-        C_yy = self._cov(psi_y, psi_y)
-        C_yx = self._cov(psi_y, psi_x)
-        C_xy = self._cov(psi_x, psi_y)
-        C_xx = self._cov(psi_x, psi_x)
-
-        C_yy_inv_root = self._mat_to_the_power(C_yy+torch.eye(C_yy.shape[0], device=Y.device)*1e-3, -0.5)
-        C_xx_inv = torch.inverse(C_xx+torch.eye(C_xx.shape[0], device=X.device)*1e-3)
-        M = torch.linalg.multi_dot([C_yy_inv_root, C_yx, C_xx_inv, C_xy, C_yy_inv_root])
-        return torch.trace(M)/M.shape[0]
-    '''
     @staticmethod
     def _cov(psi_x, psi_y):
         """
@@ -116,18 +96,3 @@ class SparseDeepCCA(nn.Module):
         """
         N = psi_x.shape[0]
         return (psi_y.T @ psi_x).T / (N - 1)
-    '''
-    @staticmethod
-    def _mat_to_the_power(A, arg):
-        """
-        raises matrix to the arg-th power using diagonalization, where arg is signed float.
-        if arg is integer, it's better to use 'torch.linalg.matrix_power()'
-        :param A: symmetric matrix (must be PSD if taking even roots)
-        :param arg: the power
-        :return: A^(arg)
-        """
-        eig_values, eig_vectors = torch.linalg.eig(A)
-        eig_values = torch.real(eig_values)
-        eig_vectors = torch.real(eig_vectors)
-        return torch.linalg.multi_dot([eig_vectors, torch.diag((eig_values+1e-3) ** arg), torch.inverse(eig_vectors)])
-    '''

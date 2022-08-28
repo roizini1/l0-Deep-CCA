@@ -17,7 +17,7 @@ def train_step(net, funcs_opt, gates_opt, x, y):
     funcs_opt.zero_grad()
     gates_opt.zero_grad()
     loss = net(x, y).mean()
-    loss.backward()
+    loss.backward()  # retain_graph=True)
     funcs_opt.step()
     gates_opt.step()
     return loss
@@ -32,13 +32,14 @@ def plot_gates(net, name):
     plt.title(f'x gates,  {name}')
     plt.savefig(f'x_gates/x_gates_{name}.png')
     plt.close()
-    plt.plot(g_y.cpu().detach().numpy())
+    g_y = g_y.cpu().detach().numpy()
+    np.save('gates.npy', g_y)
+    plt.imshow(g_y.reshape(28, 28))
     plt.title(f'y gates,  {name}')
     plt.savefig(f'y_gates/y_gates_{name}.png')
     plt.close()
 
 
-# center_function = lambda x: x - x.mean(axis=1).reshape(x.shape[0], 1)
 
 
 def load_data(name='mnist_background_images'):
@@ -87,7 +88,7 @@ def main(args):
 
     loss = []
     start = timer()
-    for epoch in range(6000):
+    for epoch in range(2000):
         loss.append(train_step(net, funcs_opt, gates_opt, x, y).item())
         if (epoch + 1) % 100 == 0:
             end = timer()
@@ -110,15 +111,15 @@ if __name__ == '__main__':
     parser.add_argument('--cuda',
                         help='gpu indexes, in [1,2,3] format',
                         type=str,
-                        default="[0,1,2,3]")
+                        default="[1,2]")
     parser.add_argument('--lamx',
                         help='x gates reg',
                         type=float,
-                        default=1.0)
+                        default=1)
     parser.add_argument('--lamy',
                         help='y gates reg',
                         type=float,
-                        default=1.0)
+                        default=1)
     args = parser.parse_args()
 
     args.cuda = args.cuda.strip('][').split(',')
